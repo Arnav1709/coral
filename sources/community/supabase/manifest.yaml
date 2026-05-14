@@ -287,15 +287,27 @@ tables:
         description: SHA-256 hash of the deployed function bundle.
         expr: {kind: path, path: [ezbr_sha256]}
       - name: created_at
-        type: Utf8
+        type: Timestamp
         nullable: true
-        description: Function creation timestamp (ISO 8601).
-        expr: {kind: path, path: [created_at]}
+        description: Function creation time (epoch milliseconds).
+        expr:
+          kind: format_timestamp
+          input: milliseconds
+          expr:
+            kind: path
+            path:
+              - created_at
       - name: updated_at
-        type: Utf8
+        type: Timestamp
         nullable: true
-        description: Last update timestamp (ISO 8601).
-        expr: {kind: path, path: [updated_at]}
+        description: Last update time (epoch milliseconds).
+        expr:
+          kind: format_timestamp
+          input: milliseconds
+          expr:
+            kind: path
+            path:
+              - updated_at
       - name: project_ref
         type: Utf8
         nullable: true
@@ -493,7 +505,7 @@ tables:
         expr:
           kind: from_filter
           key: project_ref
-      - name: services_filter
+      - name: services
         type: Utf8
         nullable: true
         virtual: true
@@ -660,7 +672,7 @@ tables:
           When the branch is scheduled for deletion (ISO 8601). Null if
           no deletion is pending.
         expr: {kind: path, path: [deletion_scheduled_at]}
-      - name: project_ref_filter
+      - name: project_ref_echo
         type: Utf8
         nullable: true
         virtual: true
