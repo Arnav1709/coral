@@ -287,14 +287,14 @@ tables:
         description: SHA-256 hash of the deployed function bundle.
         expr: {kind: path, path: [ezbr_sha256]}
       - name: created_at
-        type: Int64
+        type: Utf8
         nullable: true
-        description: Function creation time as a Unix epoch timestamp.
+        description: Function creation timestamp (ISO 8601).
         expr: {kind: path, path: [created_at]}
       - name: updated_at
-        type: Int64
+        type: Utf8
         nullable: true
-        description: Last update time as a Unix epoch timestamp.
+        description: Last update timestamp (ISO 8601).
         expr: {kind: path, path: [updated_at]}
       - name: project_ref
         type: Utf8
