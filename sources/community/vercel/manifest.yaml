@@ -759,7 +759,8 @@ tables:
           from: input
           key: VERCEL_TEAM_ID
     response:
-      rows_path: []
+      rows_path:
+        - envs
     pagination:
       mode: none
     columns:
