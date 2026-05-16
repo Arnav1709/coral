@@ -206,7 +206,8 @@ SendGrid API endpoint:
 
 - **Offset pagination** (`limit` + `offset`): `teammates`,
   `bounces`, `blocks`, `spam_reports`, `invalid_emails`
-- **Fixed-size single request**: `api_keys`, `templates`,
+- **Fixed-size single request**: `api_keys`
+- **Single-page fetch (may be incomplete)**: `templates`,
   `marketing_lists`, `singlesends`
 - **No pagination**: `verified_senders`, `suppression_groups`,
   `marketing_senders`
