@@ -321,7 +321,7 @@ FROM travis_ci.settings
 WHERE repo_slug = 'owner%2Frepo';
 
 -- Check cron schedules
-SELECT interval, active, next_run, last_run, branch_name
+SELECT "interval", active, next_run, last_run, branch_name
 FROM travis_ci.crons
 WHERE repo_slug = 'owner%2Frepo';
 
