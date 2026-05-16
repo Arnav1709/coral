@@ -138,7 +138,7 @@ are named groups of file paths defined in `codecov.yml`.
 **Example:**
 
 ```sql
-SELECT component_id, name, coverage, files, lines, hits, misses
+SELECT component_id, name, coverage
 FROM codecov.components
 WHERE repo = 'my-repo';
 ```
