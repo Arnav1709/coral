@@ -20,6 +20,8 @@ API keys, and teammates from Twilio SendGrid.
 
 ```bash
 export SENDGRID_API_KEY="SG.your_api_key_here"
+# Optional for EU-hosted accounts:
+# export SENDGRID_BASE_URL="https://api.eu.sendgrid.com/v3"
 coral source add --file sources/community/sendgrid/manifest.yaml
 ```
 
@@ -93,57 +95,63 @@ FROM sendgrid.suppression_groups;
 ### `bounces`
 
 Lists all bounced email addresses with reason, enhanced
-SMTP status code, and creation timestamp (4 columns).
+SMTP status code, and creation timestamp (7 columns).
 
 **Useful for:**
 
 - Auditing delivery issues and bounce patterns
 - Identifying problematic recipient addresses
+- Filtering large suppression lists by `start_time`, `end_time`, or `email`
 
 **Example:**
 
 ```sql
 SELECT email, reason, status, created
 FROM sendgrid.bounces
+WHERE start_time = 1714521600
+  AND end_time = 1715126399
 LIMIT 50;
 ```
 
 ### `blocks`
 
 Lists all blocked email addresses with reason, status
-code, and creation timestamp (4 columns).
+code, and creation timestamp (7 columns).
 
 **Example:**
 
 ```sql
 SELECT email, reason, status, created
 FROM sendgrid.blocks
+WHERE email = 'user@example.com'
 LIMIT 50;
 ```
 
 ### `spam_reports`
 
 Lists all spam report email addresses with the IP that
-sent the reported email and creation timestamp (3 columns).
+sent the reported email and creation timestamp (6 columns).
 
 **Example:**
 
 ```sql
 SELECT email, ip, created
 FROM sendgrid.spam_reports
+WHERE start_time = 1714521600
 LIMIT 50;
 ```
 
 ### `invalid_emails`
 
 Lists all invalid email addresses with reason for invalidity
-and creation timestamp (3 columns).
+and creation timestamp (6 columns).
 
 **Example:**
 
 ```sql
 SELECT email, reason, created
 FROM sendgrid.invalid_emails
+WHERE email = 'user@example.com'
 LIMIT 50;
 ```
 
@@ -163,7 +171,7 @@ FROM sendgrid.marketing_lists;
 
 Lists all marketing sender identities with nickname,
 from/reply-to addresses, verification status, and physical
-address (13 columns).
+address (15 columns).
 
 **Example:**
 
@@ -197,6 +205,7 @@ SendGrid API key.
 
 | Input | Kind | Description |
 |---|---|---|
+| `SENDGRID_BASE_URL` | variable | SendGrid API base URL (defaults to US API) |
 | `SENDGRID_API_KEY` | secret | SendGrid API key |
 
 ## Pagination
@@ -211,6 +220,10 @@ SendGrid API endpoint:
   `marketing_lists`, `singlesends`
 - **No pagination**: `verified_senders`, `suppression_groups`,
   `marketing_senders`
+
+`templates`, `marketing_lists`, and `singlesends` return `_metadata.next` as a
+full URL. Coral cannot follow that as a cursor yet, so those tables request the
+largest documented first page where possible.
 
 ## Example Queries
 
@@ -240,7 +253,9 @@ FROM sendgrid.verified_senders;
 ```sql
 SELECT email, reason, status
 FROM sendgrid.bounces
-WHERE status LIKE '5.%'
+WHERE start_time = 1714521600
+  AND end_time = 1715126399
+  AND status LIKE '5.%'
 LIMIT 20;
 ```
 
@@ -277,16 +292,19 @@ FROM sendgrid.marketing_senders;
 
 - The source is read-only — no create, update, or delete operations
 - API keys start with `SG.` — do not confuse with other token formats
-- Suppression timestamps (`created` in bounces, blocks, spam_reports,
-  invalid_emails) are Unix epoch integers, not ISO 8601 strings
+- Suppression tables expose `created_i` as raw Unix epoch seconds and
+  `created` as a derived timestamp
 - Marketing sender `verified` is a boolean
-- Marketing sender `created_at`/`updated_at` are Unix epoch integers
+- Marketing sender `created_at_i`/`updated_at_i` are raw Unix epoch seconds;
+  `created_at`/`updated_at` are derived timestamps
 - The `templates` table returns both legacy and dynamic templates
   by default (filtered via `generations=legacy,dynamic`)
+- Template `updated_at` values use SendGrid's `YYYY-MM-DD HH:MM:SS` format,
+  not ISO 8601
 - The `templates`, `marketing_lists`, and `singlesends` APIs expose
   page-token pagination that Coral cannot fully follow yet, so this
   source requests the largest documented first page where supported
 - The `versions` column in templates is a JSON array containing
   version details (id, name, subject, active status)
-- EU-hosted SendGrid accounts should update the base URL to
-  `https://api.eu.sendgrid.com/v3` in the manifest
+- EU-hosted SendGrid accounts should set `SENDGRID_BASE_URL` to
+  `https://api.eu.sendgrid.com/v3`

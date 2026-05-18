@@ -7,14 +7,21 @@ description: >-
   reports, invalid emails), marketing lists, single sends,
   suppression groups, sender identities, verified senders,
   API keys, and teammates from Twilio SendGrid.
-base_url: https://api.sendgrid.com/v3
 
 inputs:
+  SENDGRID_BASE_URL:
+    kind: variable
+    default: https://api.sendgrid.com/v3
+    hint: >-
+      Base URL for the SendGrid API. The default works for US-hosted
+      accounts. For EU-hosted accounts use https://api.eu.sendgrid.com/v3.
   SENDGRID_API_KEY:
     kind: secret
     hint: >-
       SendGrid API key. Create one at https://app.sendgrid.com/settings/api_keys
       with at least read-only access to the resources you want to query.
+
+base_url: "{{input.SENDGRID_BASE_URL}}"
 
 auth:
   type: HeaderAuth
@@ -25,6 +32,8 @@ auth:
 
 test_queries:
   - SELECT api_key_id, name FROM sendgrid.api_keys LIMIT 1
+  - SELECT id, nickname FROM sendgrid.verified_senders LIMIT 1
+  - SELECT email FROM sendgrid.bounces LIMIT 1
 
 tables:
   # ──────────────────────────────────────────────────────────────────────
@@ -36,6 +45,8 @@ tables:
       and creation/last-used metadata.
     guide: >
       `SELECT api_key_id, name FROM sendgrid.api_keys`.
+      SendGrid documents `limit` for this endpoint, but no offset or cursor;
+      this table requests the first 100 API keys.
     request:
       method: GET
       path: /api_keys
@@ -266,6 +277,9 @@ tables:
     guide: >
       `SELECT id, name, generation, updated_at
       FROM sendgrid.templates LIMIT 20`.
+      This endpoint returns `_metadata.next` as a full URL, which Coral
+      cannot follow as a cursor yet, so the table requests the largest
+      documented first page.
     request:
       method: GET
       path: /templates
@@ -309,7 +323,7 @@ tables:
       - name: updated_at
         type: Utf8
         nullable: true
-        description: Last update timestamp.
+        description: Last update timestamp in `YYYY-MM-DD HH:MM:SS` format.
         expr:
           kind: path
           path:
@@ -392,9 +406,27 @@ tables:
     guide: >
       `SELECT email, reason, status, created
       FROM sendgrid.bounces LIMIT 50`.
+      Optional filters: `start_time`, `end_time`, and `email`.
+    filters:
+      - name: start_time
+        required: false
+      - name: end_time
+        required: false
+      - name: email
+        required: false
     request:
       method: GET
       path: /suppression/bounces
+      query:
+        - name: start_time
+          from: filter
+          key: start_time
+        - name: end_time
+          from: filter
+          key: end_time
+        - name: email
+          from: filter
+          key: email
     response:
       row_strategy: direct
     pagination:
@@ -406,6 +438,22 @@ tables:
         max: 500
         query_param: limit
     columns:
+      - name: start_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional start time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: start_time
+      - name: end_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional end time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: end_time
       - name: email
         type: Utf8
         nullable: false
@@ -430,7 +478,7 @@ tables:
           kind: path
           path:
             - status
-      - name: created
+      - name: created_i
         type: Int64
         nullable: true
         description: Unix timestamp when the bounce was recorded.
@@ -438,6 +486,17 @@ tables:
           kind: path
           path:
             - created
+      - name: created
+        type: Timestamp
+        nullable: true
+        description: When the bounce was recorded.
+        expr:
+          kind: format_timestamp
+          input: seconds
+          expr:
+            kind: path
+            path:
+              - created
 
   # ──────────────────────────────────────────────────────────────────────
   # blocks
@@ -449,9 +508,27 @@ tables:
     guide: >
       `SELECT email, reason, status, created
       FROM sendgrid.blocks LIMIT 50`.
+      Optional filters: `start_time`, `end_time`, and `email`.
+    filters:
+      - name: start_time
+        required: false
+      - name: end_time
+        required: false
+      - name: email
+        required: false
     request:
       method: GET
       path: /suppression/blocks
+      query:
+        - name: start_time
+          from: filter
+          key: start_time
+        - name: end_time
+          from: filter
+          key: end_time
+        - name: email
+          from: filter
+          key: email
     response:
       row_strategy: direct
     pagination:
@@ -463,6 +540,22 @@ tables:
         max: 500
         query_param: limit
     columns:
+      - name: start_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional start time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: start_time
+      - name: end_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional end time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: end_time
       - name: email
         type: Utf8
         nullable: false
@@ -487,7 +580,7 @@ tables:
           kind: path
           path:
             - status
-      - name: created
+      - name: created_i
         type: Int64
         nullable: true
         description: Unix timestamp when the block was recorded.
@@ -495,6 +588,17 @@ tables:
           kind: path
           path:
             - created
+      - name: created
+        type: Timestamp
+        nullable: true
+        description: When the block was recorded.
+        expr:
+          kind: format_timestamp
+          input: seconds
+          expr:
+            kind: path
+            path:
+              - created
 
   # ──────────────────────────────────────────────────────────────────────
   # spam_reports
@@ -506,9 +610,27 @@ tables:
     guide: >
       `SELECT email, ip, created
       FROM sendgrid.spam_reports LIMIT 50`.
+      Optional filters: `start_time`, `end_time`, and `email`.
+    filters:
+      - name: start_time
+        required: false
+      - name: end_time
+        required: false
+      - name: email
+        required: false
     request:
       method: GET
       path: /suppression/spam_reports
+      query:
+        - name: start_time
+          from: filter
+          key: start_time
+        - name: end_time
+          from: filter
+          key: end_time
+        - name: email
+          from: filter
+          key: email
     response:
       row_strategy: direct
     pagination:
@@ -520,6 +642,22 @@ tables:
         max: 500
         query_param: limit
     columns:
+      - name: start_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional start time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: start_time
+      - name: end_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional end time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: end_time
       - name: email
         type: Utf8
         nullable: false
@@ -536,7 +674,7 @@ tables:
           kind: path
           path:
             - ip
-      - name: created
+      - name: created_i
         type: Int64
         nullable: true
         description: Unix timestamp when the spam report was recorded.
@@ -544,6 +682,17 @@ tables:
           kind: path
           path:
             - created
+      - name: created
+        type: Timestamp
+        nullable: true
+        description: When the spam report was recorded.
+        expr:
+          kind: format_timestamp
+          input: seconds
+          expr:
+            kind: path
+            path:
+              - created
 
   # ──────────────────────────────────────────────────────────────────────
   # invalid_emails
@@ -555,9 +704,27 @@ tables:
     guide: >
       `SELECT email, reason, created
       FROM sendgrid.invalid_emails LIMIT 50`.
+      Optional filters: `start_time`, `end_time`, and `email`.
+    filters:
+      - name: start_time
+        required: false
+      - name: end_time
+        required: false
+      - name: email
+        required: false
     request:
       method: GET
       path: /suppression/invalid_emails
+      query:
+        - name: start_time
+          from: filter
+          key: start_time
+        - name: end_time
+          from: filter
+          key: end_time
+        - name: email
+          from: filter
+          key: email
     response:
       row_strategy: direct
     pagination:
@@ -569,6 +736,22 @@ tables:
         max: 500
         query_param: limit
     columns:
+      - name: start_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional start time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: start_time
+      - name: end_time
+        type: Int64
+        nullable: true
+        virtual: true
+        description: Optional end time filter as Unix epoch seconds.
+        expr:
+          kind: from_filter
+          key: end_time
       - name: email
         type: Utf8
         nullable: false
@@ -585,7 +768,7 @@ tables:
           kind: path
           path:
             - reason
-      - name: created
+      - name: created_i
         type: Int64
         nullable: true
         description: Unix timestamp when recorded.
@@ -593,6 +776,17 @@ tables:
           kind: path
           path:
             - created
+      - name: created
+        type: Timestamp
+        nullable: true
+        description: When the invalid email was recorded.
+        expr:
+          kind: format_timestamp
+          input: seconds
+          expr:
+            kind: path
+            path:
+              - created
 
   # ──────────────────────────────────────────────────────────────────────
   # marketing_lists
@@ -604,6 +798,9 @@ tables:
     guide: >
       `SELECT id, name, contact_count
       FROM sendgrid.marketing_lists`.
+      This endpoint returns `_metadata.next` as a full URL, which Coral
+      cannot follow as a cursor yet, so the table requests the largest
+      documented first page.
     request:
       method: GET
       path: /marketing/lists
@@ -753,7 +950,7 @@ tables:
           kind: path
           path:
             - locked
-      - name: created_at
+      - name: created_at_i
         type: Int64
         nullable: true
         description: Unix timestamp of creation.
@@ -761,7 +958,18 @@ tables:
           kind: path
           path:
             - created_at
-      - name: updated_at
+      - name: created_at
+        type: Timestamp
+        nullable: true
+        description: When the sender identity was created.
+        expr:
+          kind: format_timestamp
+          input: seconds
+          expr:
+            kind: path
+            path:
+              - created_at
+      - name: updated_at_i
         type: Int64
         nullable: true
         description: Unix timestamp of last update.
@@ -769,6 +977,17 @@ tables:
           kind: path
           path:
             - updated_at
+      - name: updated_at
+        type: Timestamp
+        nullable: true
+        description: When the sender identity was last updated.
+        expr:
+          kind: format_timestamp
+          input: seconds
+          expr:
+            kind: path
+            path:
+              - updated_at
 
   # ──────────────────────────────────────────────────────────────────────
   # singlesends
@@ -780,6 +999,9 @@ tables:
     guide: >
       `SELECT id, name, status, send_at
       FROM sendgrid.singlesends LIMIT 20`.
+      This endpoint returns `_metadata.next` as a full URL, which Coral
+      cannot follow as a cursor yet, so the table requests the largest
+      documented first page.
     request:
       method: GET
       path: /marketing/singlesends
