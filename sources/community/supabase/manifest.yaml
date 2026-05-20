@@ -323,13 +323,11 @@ tables:
   - name: secrets
     description: >
       Project secrets (environment variables available to Edge Functions).
-      Returns secret names and their last-updated timestamps. The API
-      returns empty strings for actual secret values. Requires the project
-      ref as a filter.
+      Returns secret names and their last-updated timestamps for inventory purposes.
+      Requires the project ref as a filter.
     guide: >
       Always filter by project_ref: `SELECT name, updated_at FROM
       supabase.secrets WHERE project_ref = 'abcdefghijklmnopqrst'`.
-      Note: the `value` column returns empty strings for security.
     filters:
       - name: project_ref
         required: true
@@ -344,13 +342,6 @@ tables:
         nullable: false
         description: Secret key name (e.g. MY_API_KEY).
         expr: {kind: path, path: [name]}
-      - name: value
-        type: Utf8
-        nullable: true
-        description: >-
-          Secret value. The API returns empty strings for most secrets;
-          actual values are not exposed through the Management API.
-        expr: {kind: path, path: [value]}
       - name: updated_at
         type: Timestamp
         nullable: true

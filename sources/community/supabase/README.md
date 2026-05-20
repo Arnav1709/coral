@@ -22,7 +22,7 @@ PATs carry the same privileges as your user account. Keep them secret and do not
 | `projects`             | `GET /v1/projects`                                   | none                 | All projects across all orgs                |
 | `organization_members` | `GET /v1/organizations/{slug}/members`               | `slug` (required)    | Members and roles within an org             |
 | `edge_functions`       | `GET /v1/projects/{ref}/functions`                   | `project_ref` (req.) | Deployed Edge Functions                     |
-| `secrets`              | `GET /v1/projects/{ref}/secrets`                     | `project_ref` (req.) | Secret names only, values are redacted      |
+| `secrets`              | `GET /v1/projects/{ref}/secrets`                     | `project_ref` (req.) | Secret names and timestamps for inventory   |
 | `storage_buckets`      | `GET /v1/projects/{ref}/storage/buckets`             | `project_ref` (req.) | Public and private storage buckets          |
 | `service_health`       | `GET /v1/projects/{ref}/health`                      | `project_ref`, `services` (req.) | Per-service health and version info |
 | `backups`              | `GET /v1/projects/{ref}/database/backups`            | `project_ref` (req.) | Logical and physical backup snapshots       |
@@ -74,7 +74,7 @@ SELECT id, name, slug, status, version, verify_jwt
 FROM supabase.edge_functions
 WHERE project_ref = 'abcdefghijklmnopqrst';
 
--- List secrets (names only, values are not exposed)
+-- List secrets (inventory of names and timestamps)
 SELECT name, updated_at
 FROM supabase.secrets
 WHERE project_ref = 'abcdefghijklmnopqrst';
@@ -114,6 +114,5 @@ The Supabase Management API enforces 120 requests per minute per user per scope 
 
 - **Read-only**: no create, update, or delete operations
 - **No pagination**: most Management API list endpoints return all items in a single response; projects or orgs with very large counts may hit API-side limits
-- **Secret values**: the API returns empty strings for secret values; only key names and timestamps are visible
 - **Branching**: the branches table requires a paid plan with branching enabled
 - **Service health**: requires specifying which services to check via the `services` filter
